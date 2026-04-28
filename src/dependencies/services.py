@@ -4,15 +4,18 @@ from typing import Annotated
 
 from fastapi import Depends
 
+from src.dependencies.ai import FastLLMDep, TinyLLMDep
 from src.dependencies.infra import SessionManagerDep
 from src.dependencies.repositories import (
     AuthRepositoryDep,
     PatientsRepositoryDep,
+    SessionsRepositoryDep,
     TemplatesRepositoryDep,
     UserRepositoryDep,
 )
 from src.modules.auth.service import AuthService
 from src.modules.patients.service import PatientService
+from src.modules.sessions.service import SessionService
 from src.modules.templates.service import TemplateService
 from src.modules.users.service import UserService
 
@@ -33,6 +36,18 @@ async def get_patient_service(
     return PatientService(repo=patients_repo)
 
 
+async def get_session_service(
+    sessions_repo: SessionsRepositoryDep,
+    tiny_llm: TinyLLMDep,
+    fast_llm: FastLLMDep,
+) -> SessionService:
+    return SessionService(
+        repo=sessions_repo,
+        tiny_llm=tiny_llm,
+        fast_llm=fast_llm,
+    )
+
+
 async def get_template_service(
     templates_repo: TemplatesRepositoryDep,
 ) -> TemplateService:
@@ -47,5 +62,6 @@ async def get_user_service(
 
 AuthServiceDep = Annotated[AuthService, Depends(get_auth_service)]
 PatientServiceDep = Annotated[PatientService, Depends(get_patient_service)]
+SessionServiceDep = Annotated[SessionService, Depends(get_session_service)]
 TemplateServiceDep = Annotated[TemplateService, Depends(get_template_service)]
 UserServiceDep = Annotated[UserService, Depends(get_user_service)]

@@ -83,6 +83,7 @@ class Session(TimestampMixin, Base):
     total_audio_seconds: Mapped[int] = mapped_column(Integer, default=0)
     current_segment_start: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     clinical_summary: Mapped[Optional[str]] = mapped_column(Text)
+    last_summarized_transcript_id: Mapped[Optional[uuid.UUID]] = mapped_column(ForeignKey("session_timeline.id", ondelete="SET NULL"), nullable=True)
 
     user: Mapped["User"] = relationship(back_populates="sessions")
     patient: Mapped[Optional["Patient"]] = relationship(back_populates="sessions")

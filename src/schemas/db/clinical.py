@@ -31,6 +31,7 @@ class SessionDb(BaseModel):
     total_audio_seconds: int
     current_segment_start: Optional[datetime] = None
     clinical_summary: Optional[str] = None
+    last_summarized_transcript_id: Optional[UUID] = None
     created_at: datetime
     updated_at: datetime
 
