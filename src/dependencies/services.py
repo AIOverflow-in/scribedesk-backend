@@ -5,10 +5,9 @@ from typing import Annotated
 from fastapi import Depends
 
 from src.dependencies.infra import SessionManagerDep
-from src.dependencies.repositories import AuthRepositoryDep
-from src.infrastructure.persistence.postgres.repos.auth_repo import AuthRepository
-from src.infrastructure.persistence.redis.sessions import SessionManager
+from src.dependencies.repositories import AuthRepositoryDep, PatientsRepositoryDep
 from src.modules.auth.service import AuthService
+from src.modules.patients.service import PatientService
 
 
 async def get_auth_service(
@@ -21,4 +20,11 @@ async def get_auth_service(
     )
 
 
+async def get_patient_service(
+    patients_repo: PatientsRepositoryDep,
+) -> PatientService:
+    return PatientService(repo=patients_repo)
+
+
 AuthServiceDep = Annotated[AuthService, Depends(get_auth_service)]
+PatientServiceDep = Annotated[PatientService, Depends(get_patient_service)]
