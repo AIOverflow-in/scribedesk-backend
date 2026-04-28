@@ -16,6 +16,9 @@ class ClinicInfo(BaseModel):
     country: Optional[str] = None
     logo_url: Optional[str] = None
 
+    class Config:
+        from_attributes = True
+
 
 class UserProfileResponse(BaseModel):
     id: UUID

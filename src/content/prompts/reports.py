@@ -1,32 +1,37 @@
+"""Prompt template for report generation."""
+
 import textwrap
 
 
 class ReportPrompts:
-    SYSTEM_PROMPT = "You are a medical scribe specializing in clinical documentation."
-
-    GENERATE_FROM_TEMPLATE = textwrap.dedent("""\
-        Generate a clinical report using the following template.
-
-        **CURRENT DATE:** {current_date}
-
-        **CONTEXT:**
-        {context}
-
-        **TRANSCRIPTS:**
-        {transcripts}
+    GENERATE = textwrap.dedent("""\
+        You are a medical scribe generating a clinical document.
 
         **TEMPLATE:**
         {template_content}
 
-        **INSTRUCTIONS:**
-        - Fill in all the placeholders in the template based on the transcripts and context
-        - Preserve all Markdown formatting from the template (headers, bold, lists, etc.)
-        - Use the CURRENT DATE for date fields, and doctor/clinic info from context
-        - Return ONLY the completed template in Markdown format, nothing else
+        **SESSION TRANSCRIPTS:**
+        {transcripts}
 
-        **CRITICAL: Do NOT hallucinate medical facts.**
-        - You MAY use: current date, doctor name, clinic details, patient demographics
-        - You MAY include standard medical certificate language (e.g., "To Whom It May Concern", "Please note:", etc.)
-        - DO NOT invent: diagnosis, specific symptoms, treatment dates, recovery periods, medical recommendations
-        - If medical details are not mentioned in transcripts, leave those specific fields blank or use generic placeholders like "---" or "(pending medical review)"
+        **CLINICAL SUMMARY:**
+        {clinical_summary}
+
+        **PATIENT INFO:**
+        {patient_info}
+
+        **DOCTOR INFO:**
+        {doctor_info}
+
+        **ADDITIONAL CONTEXT FROM DOCTOR:**
+        {additional_context}
+
+        **INSTRUCTIONS:**
+        - Generate the document following the template structure
+        - Fill in the template placeholders (e.g., [patient_name], [chief_complaint]) using the transcripts
+        - Format the output as clean Markdown
+        - Use the clinical summary for assessment and plan sections
+        - Include patient and doctor details where indicated in the template
+        - Keep medical terminology accurate
+        - If information is missing from transcripts, make reasonable clinical inferences or leave placeholders
+        - Do NOT include the template placeholders in the output
     """)

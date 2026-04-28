@@ -7,7 +7,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from src.infrastructure.persistence.postgres.models import Session, SessionTimeline
+from src.infrastructure.persistence.postgres.models import Report, Session, SessionTimeline
 
 
 class SessionsRepository:
@@ -17,7 +17,10 @@ class SessionsRepository:
     async def get_by_id(self, session_id: UUID, user_id: UUID) -> Optional[Session]:
         stmt = (
             select(Session)
-            .options(selectinload(Session.patient))
+            .options(
+                selectinload(Session.patient),
+                selectinload(Session.reports).selectinload(Report.template),
+            )
             .where(Session.id == session_id, Session.user_id == user_id)
         )
         result = await self.session.execute(stmt)
