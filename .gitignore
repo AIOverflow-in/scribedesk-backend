@@ -1,0 +1,52 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+
+# Environment
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project
+*.log
+
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Docker
+*.log
+
+# Local setup scripts
+*.bat
+*.ps1
+
+# Celery/Application Logs
+*.log
+*.err
+*.out
+celerybeat-schedule*
+celeryd-cache
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+docker-compose.my-network.yml
+.ruff_cache
