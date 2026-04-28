@@ -5,6 +5,7 @@ from uuid import UUID
 from pydantic import BaseModel, Field
 
 from src.infrastructure.persistence.postgres.models import Session
+from src.schemas.api.reports import ReportMetadata
 from src.utils.formatters import calculate_age
 
 
@@ -37,6 +38,7 @@ class SessionResponse(BaseModel):
     current_segment_start: Optional[datetime] = None
     clinical_summary: Optional[str] = None
     last_summarized_transcript_id: Optional[UUID] = None
+    reports: list[ReportMetadata] = []
     created_at: datetime
     updated_at: datetime
 
@@ -50,6 +52,16 @@ class SessionResponse(BaseModel):
             resp.patient_name = session.patient.full_name
             resp.patient_gender = session.patient.gender
             resp.patient_age = calculate_age(session.patient.date_of_birth)
+        if session.reports:
+            resp.reports = [
+                ReportMetadata(
+                    id=r.id,
+                    title=r.title,
+                    template_name=r.template.name if r.template else "Unknown",
+                    created_at=r.created_at,
+                )
+                for r in session.reports
+            ]
         return resp
 
 

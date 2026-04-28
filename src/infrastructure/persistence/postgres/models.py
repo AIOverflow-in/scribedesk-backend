@@ -141,3 +141,4 @@ class Report(TimestampMixin, Base):
     content_hash: Mapped[Optional[str]] = mapped_column(String(64))
 
     session: Mapped["Session"] = relationship(back_populates="reports")
+    template: Mapped["Template"] = relationship()

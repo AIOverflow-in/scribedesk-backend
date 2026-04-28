@@ -10,7 +10,7 @@ from src.core.middleware import RequestContextMiddleware
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
-    description="Medical Copilot Extension API",
+    description="Clinical Tool",
     version="1.0.0",
     lifespan=lifespan,
 )
