@@ -9,6 +9,7 @@ from src.dependencies.db import get_db_session
 from src.infrastructure.persistence.postgres.repos.auth_repo import AuthRepository
 from src.infrastructure.persistence.postgres.repos.patients_repo import PatientsRepository
 from src.infrastructure.persistence.postgres.repos.templates_repo import TemplatesRepository
+from src.infrastructure.persistence.postgres.repos.user_repo import UserRepository
 
 
 async def get_auth_repo(
@@ -29,6 +30,13 @@ async def get_templates_repo(
     return TemplatesRepository(session=session)
 
 
+async def get_user_repo(
+    session: AsyncSession = Depends(get_db_session),
+) -> UserRepository:
+    return UserRepository(session=session)
+
+
 AuthRepositoryDep = Annotated[AuthRepository, Depends(get_auth_repo)]
 PatientsRepositoryDep = Annotated[PatientsRepository, Depends(get_patients_repo)]
 TemplatesRepositoryDep = Annotated[TemplatesRepository, Depends(get_templates_repo)]
+UserRepositoryDep = Annotated[UserRepository, Depends(get_user_repo)]
