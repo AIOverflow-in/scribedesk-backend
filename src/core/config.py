@@ -46,6 +46,8 @@ class Settings(BaseSettings):
     SMART_LLM_FALLBACK_MODEL: str = "gemini-3-flash-preview"
 
     DEEPGRAM_API_KEY: str
+    DEEPGRAM_MODEL: str = "nova-2-general"
+    DEEPGRAM_CHUNK_SIZE: int = 5
     BRAVE_SEARCH_API_KEY: Optional[str] = None
 
     S3_ENDPOINT_URL: str
