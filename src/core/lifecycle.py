@@ -6,7 +6,6 @@ from fastapi import FastAPI
 
 from src.core.config import settings
 from src.core.logging import get_logger, setup_logging
-from src.core.middleware import RequestContextMiddleware
 from src.infrastructure.persistence.postgres.database import check_db_connection, close_db_connections
 from src.infrastructure.persistence.redis.client import init_redis, close_redis
 
@@ -38,8 +37,6 @@ async def lifespan(app: FastAPI):
             logger.critical("FATAL: Database connection failed. The application cannot persist data.")
     except Exception as e:
         logger.critical(f"FATAL: Database connection check failed: {e}")
-
-    app.add_middleware(RequestContextMiddleware)
 
     logger.info("Startup complete. API server ready.")
 
