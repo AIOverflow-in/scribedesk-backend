@@ -5,9 +5,14 @@ from typing import Annotated
 from fastapi import Depends
 
 from src.dependencies.infra import SessionManagerDep
-from src.dependencies.repositories import AuthRepositoryDep, PatientsRepositoryDep
+from src.dependencies.repositories import (
+    AuthRepositoryDep,
+    PatientsRepositoryDep,
+    TemplatesRepositoryDep,
+)
 from src.modules.auth.service import AuthService
 from src.modules.patients.service import PatientService
+from src.modules.templates.service import TemplateService
 
 
 async def get_auth_service(
@@ -26,5 +31,12 @@ async def get_patient_service(
     return PatientService(repo=patients_repo)
 
 
+async def get_template_service(
+    templates_repo: TemplatesRepositoryDep,
+) -> TemplateService:
+    return TemplateService(repo=templates_repo)
+
+
 AuthServiceDep = Annotated[AuthService, Depends(get_auth_service)]
 PatientServiceDep = Annotated[PatientService, Depends(get_patient_service)]
+TemplateServiceDep = Annotated[TemplateService, Depends(get_template_service)]
