@@ -3,11 +3,13 @@ import uuid
 from typing import Optional, Dict, Any
 from redis.asyncio import Redis
 
+from src.core.config import settings
+
 class SessionManager:
     def __init__(self, redis_client: Redis):
         self.redis = redis_client
         self.prefix = "session:"
-        self.ttl = 86400  
+        self.ttl = settings.SESSION_EXPIRY_SECONDS
 
     async def create_session(
         self, 
