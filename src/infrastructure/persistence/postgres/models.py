@@ -50,7 +50,6 @@ class Clinic(Base):
     state: Mapped[Optional[str]] = mapped_column(String(100))
     pincode: Mapped[Optional[str]] = mapped_column(String(20))
     country: Mapped[Optional[str]] = mapped_column(String(2))
-    address: Mapped[Optional[str]] = mapped_column(Text)
     logo_url: Mapped[Optional[str]] = mapped_column(String(500))
 
     user: Mapped["User"] = relationship(back_populates="clinic")
