@@ -87,7 +87,12 @@ class Session(TimestampMixin, Base):
 
     user: Mapped["User"] = relationship(back_populates="sessions")
     patient: Mapped[Optional["Patient"]] = relationship(back_populates="sessions")
-    timeline: Mapped[list["SessionTimeline"]] = relationship(back_populates="session", cascade="all, delete-orphan", passive_deletes=True)
+    timeline: Mapped[list["SessionTimeline"]] = relationship(
+        back_populates="session",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        foreign_keys="SessionTimeline.session_id",
+    )
     reports: Mapped[list["Report"]] = relationship(back_populates="session", cascade="all, delete-orphan", passive_deletes=True)
 
 
@@ -103,7 +108,7 @@ class SessionTimeline(Base):
     relative_seconds: Mapped[Optional[int]] = mapped_column(Integer)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
-    session: Mapped["Session"] = relationship(back_populates="timeline")
+    session: Mapped["Session"] = relationship(back_populates="timeline", foreign_keys=[session_id])
 
 
 # --- Reports & Templates ---
