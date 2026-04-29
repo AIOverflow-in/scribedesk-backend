@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Optional
+from typing import Optional
 from uuid import UUID
 
 from sqlalchemy import func, select
@@ -31,8 +32,12 @@ class SessionsRepository:
         user_id: UUID,
         page: int = 1,
         page_size: int = 20,
+        patient_id: Optional[UUID] = None,
     ) -> tuple[list[Session], int]:
-        base = select(Session).options(selectinload(Session.patient)).where(Session.user_id == user_id).order_by(Session.created_at.desc())
+        filters = [Session.user_id == user_id]
+        if patient_id is not None:
+            filters.append(Session.patient_id == patient_id)
+        base = select(Session).options(selectinload(Session.patient)).where(*filters).order_by(Session.created_at.desc())
 
         count_stmt = select(func.count()).select_from(base.subquery())
         total = await self.session.scalar(count_stmt) or 0
@@ -52,6 +57,10 @@ class SessionsRepository:
         )
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
+
+    async def delete(self, session: Session) -> None:
+        await self.session.delete(session)
+        await self.session.commit()
 
     async def create(self, session: Session) -> Session:
         self.session.add(session)

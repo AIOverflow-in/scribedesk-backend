@@ -34,4 +34,5 @@ class ReportPrompts:
         - Keep medical terminology accurate
         - If information is missing from transcripts, make reasonable clinical inferences or leave placeholders
         - Do NOT include the template placeholders in the output
+        - Do NOT include any "Note: Structured medication data" or metadata notes in the output
     """)

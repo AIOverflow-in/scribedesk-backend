@@ -2,7 +2,7 @@
 
 from uuid import UUID
 
-from fastapi import APIRouter
+from fastapi import APIRouter, status
 
 from src.dependencies.auth import CurrentUserIdDep
 from src.dependencies.services import ReportServiceDep
@@ -26,6 +26,16 @@ async def create_report(
     )
 
     return ReportResponse.model_validate(report)
+
+
+@router.delete("/reports/{report_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_report(
+    report_id: UUID,
+    user_id: CurrentUserIdDep,
+    service: ReportServiceDep,
+):
+    """Delete a report."""
+    await service.delete(report_id=report_id, user_id=user_id)
 
 
 @router.get("/reports/{report_id}", response_model=ReportResponse)
