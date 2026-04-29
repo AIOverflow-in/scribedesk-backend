@@ -61,6 +61,3 @@ async def get_ws_current_user_id(
 
 
 WsCurrentUserIdDep = Annotated[str, Depends(get_ws_current_user_id)]
-
-
-WsCurrentUserIdDep = Annotated[str, Depends(get_ws_current_user_id)]

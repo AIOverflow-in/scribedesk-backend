@@ -74,6 +74,10 @@ class ReportService:
             raise NotFoundException("Report not found")
         return report
 
+    async def delete(self, report_id: UUID, user_id: UUID) -> None:
+        report = await self.get(report_id, user_id)
+        await self.reports_repo.delete(report)
+
     async def list_by_session(self, session_id: UUID, user_id: UUID) -> list[Report]:
         session = await self.sessions_repo.get_by_id(session_id, user_id)
         if not session:

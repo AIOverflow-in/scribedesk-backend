@@ -37,3 +37,7 @@ class ReportsRepository:
         await self.session.commit()
         await self.session.refresh(report)
         return report
+
+    async def delete(self, report: Report) -> None:
+        await self.session.delete(report)
+        await self.session.commit()

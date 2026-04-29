@@ -35,7 +35,7 @@ async def generate_title(
         schema=SessionTitleSchema,
     )
 
-    await repo.update(session, {"title": result.title})
+    await repo.update(session, {"title": result.title, "description": result.summary})
     logger.info(f"Generated title for session {session_id}: {result.title}")
     return result.title
 

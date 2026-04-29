@@ -1,17 +1,19 @@
 """Deepgram real-time transcription — buffered proxy session."""
 
 import asyncio
+import threading
 from collections import deque
 from typing import Awaitable, Callable
 
 from deepgram import DeepgramClient as DGClient
+from deepgram.core.events import EventType
 
 from src.core.config import settings
 from src.core.logging import get_logger
 
 logger = get_logger(__name__)
 
-BUFFER_SIZE = settings.DEEPGRAM_CHUNK_SIZE
+BUFFER_SIZE = settings.DEEPGRAM_CHUNK_SIZE  # number of is_final segments per flush
 
 
 class DeepgramTranscriptionSession:
@@ -40,19 +42,19 @@ class DeepgramTranscriptionSession:
             hasattr(message, "channel")
             and hasattr(message.channel, "alternatives")
         ):
+            logger.debug(f"Received non-transcript message: {type(message).__name__}")
             return
 
         transcript = message.channel.alternatives[0].transcript
         is_final = getattr(message, "is_final", False)
+        speech_final = getattr(message, "speech_final", False)
 
         if not transcript or not is_final:
             return
 
-        logger.debug(f"[IS FINAL] {transcript}")
+        logger.info(f"[IS FINAL] {transcript}")
         self._buffer.append(transcript)
-
-        if len(self._buffer) >= self._buffer_size:
-            self._flush()
+        self._flush()
 
     def _flush(self) -> None:
         if not self._buffer:
@@ -82,28 +84,39 @@ class DeepgramTranscriptionSession:
     # --- Context manager ---
 
     def __enter__(self):
+        logger.info("Opening Deepgram connection...")
         client = DGClient(api_key=settings.DEEPGRAM_API_KEY)
 
-        options = {
-            "model": settings.DEEPGRAM_MODEL,
-            "encoding": "linear16",
-            "sample_rate": 16000,
-            "channels": 1,
-        }
+        self._connection_cm = client.listen.v1.connect(
+            model=settings.DEEPGRAM_MODEL,
+            encoding="linear16",
+            sample_rate=16000,
+            channels=1,
+        )
+        logger.info("Entering Deepgram connection context...")
+        self._connection = self._connection_cm.__enter__()
+        logger.info("Deepgram connection established, registering handlers...")
+        self._connection.on(EventType.OPEN, lambda _: logger.info("Deepgram connection opened"))
+        self._connection.on(EventType.MESSAGE, self._handle_message)
+        self._connection.on(EventType.CLOSE, lambda _: logger.info("Deepgram connection closed"))
+        self._connection.on(EventType.ERROR, lambda e: logger.error(f"Deepgram error: {e}"))
 
-        self._connection = client.listen.v1.connect(options)
-        self._connection.on("Open", lambda _: logger.info("Deepgram connection opened"))
-        self._connection.on("Message", self._handle_message)
-        self._connection.on("Close", lambda _: logger.info("Deepgram connection closed"))
-        self._connection.on("Error", lambda e: logger.error(f"Deepgram error: {e}"))
+        def _listen():
+            try:
+                logger.info("Deepgram listener thread started")
+                self._connection.start_listening()
+            except Exception as e:
+                logger.error(f"Deepgram listener thread error: {e}", exc_info=True)
+            finally:
+                logger.info("Deepgram listener thread ended")
 
-        self._connection.__enter__()
+        threading.Thread(target=_listen, daemon=True).start()
         return self
 
     def __exit__(self, *args):
         self.flush_remaining()
-        if self._connection:
-            self._connection.__exit__(*args)
+        if self._connection_cm:
+            self._connection_cm.__exit__(*args)
 
 
 class DeepgramClient:

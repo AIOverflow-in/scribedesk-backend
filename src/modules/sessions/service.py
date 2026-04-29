@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import asyncio
 from datetime import datetime, timezone
+from typing import Optional
 from uuid import UUID, uuid4
 
-from fastapi import WebSocket
+from fastapi import WebSocket, WebSocketDisconnect
 
 from src.core.exceptions import NotFoundException
 from src.core.logging import get_logger
@@ -53,14 +54,19 @@ class SessionService:
             raise NotFoundException("Session not found")
         return session
 
-    async def list(self, user_id: UUID, page: int, page_size: int) -> tuple[list[Session], int]:
-        """Paginated session list."""
-        return await self.repo.list_by_user(user_id, page, page_size)
+    async def list(self, user_id: UUID, page: int, page_size: int, patient_id: Optional[UUID] = None) -> tuple[list[Session], int]:
+        """Paginated session list, optionally filtered by patient."""
+        return await self.repo.list_by_user(user_id, page, page_size, patient_id)
 
     async def update(self, session_id: UUID, user_id: UUID, data: dict) -> Session:
         """Update session metadata (title, patient, summary, etc.)."""
         session = await self.get(session_id, user_id)
         return await self.repo.update(session, data)
+
+    async def delete(self, session_id: UUID, user_id: UUID) -> None:
+        """Delete a session with ownership check."""
+        session = await self.get(session_id, user_id)
+        await self.repo.delete(session)
 
     async def get_timeline(self, session_id: UUID, user_id: UUID) -> list[SessionTimeline]:
         """Get the full timeline (events + transcripts) for a session."""
@@ -217,19 +223,24 @@ class SessionService:
                 repo = SessionsRepository(db)
                 await repo.add_timeline_entry(entry)
 
-            await websocket.send_json({
+            msg = {
                 "type": "transcript",
                 "text": text,
                 "timestamp": relative_seconds,
-            })
+            }
+            logger.info(f"[WS SEND] {msg}")
+            await websocket.send_json(msg)
 
         with self.deepgram.create_session(on_flush=on_flush) as dg_session:
             try:
                 while True:
                     data = await websocket.receive_bytes()
                     dg_session.send_audio(data)
-            except Exception:
+            except WebSocketDisconnect:
                 logger.info(f"Client disconnected from session {session_id}")
+            except Exception as e:
+                logger.error(f"Transcription error for session {session_id}: {e}", exc_info=True)
+                raise
 
         elapsed, is_first_stop = await self.prepare_stop(session_id, user_id)
 

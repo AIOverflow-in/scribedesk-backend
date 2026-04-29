@@ -1,14 +1,16 @@
 """Session CRUD routes — create, list, get, update, timeline."""
 
+from typing import Optional
 from uuid import UUID
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Query, status
 
 from src.dependencies.auth import CurrentUserIdDep
 from src.dependencies.services import SessionServiceDep
 from src.schemas.api.common import PaginatedResponse
 from src.schemas.api.sessions import (
     CreateSessionRequest,
+    SessionListItem,
     SessionResponse,
     SessionTimelineResponse,
     UpdateSessionRequest,
@@ -17,22 +19,24 @@ from src.schemas.api.sessions import (
 router = APIRouter()
 
 
-@router.get("/sessions", response_model=PaginatedResponse[SessionResponse])
+@router.get("/sessions", response_model=PaginatedResponse[SessionListItem])
 async def list_sessions(
     user_id: CurrentUserIdDep,
     service: SessionServiceDep,
     page: int = 1,
     page_size: int = 20,
+    patient_id: Optional[UUID] = Query(None),
 ):
-    """List sessions with pagination."""
+    """List sessions with pagination, optionally filtered by patient_id."""
     items, total = await service.list(
         user_id=user_id,
         page=page,
         page_size=page_size,
+        patient_id=patient_id,
     )
 
     return PaginatedResponse(
-        items=[SessionResponse.from_session(s) for s in items],
+        items=[SessionListItem.from_session(s) for s in items],
         total=total,
         page=page,
         page_size=page_size,
@@ -67,6 +71,16 @@ async def get_session(
     )
 
     return SessionResponse.from_session(session)
+
+
+@router.delete("/sessions/{session_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_session(
+    session_id: UUID,
+    user_id: CurrentUserIdDep,
+    service: SessionServiceDep,
+):
+    """Delete a session."""
+    await service.delete(session_id=session_id, user_id=user_id)
 
 
 @router.patch("/sessions/{session_id}", response_model=SessionResponse)
