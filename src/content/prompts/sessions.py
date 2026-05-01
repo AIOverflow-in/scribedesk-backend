@@ -35,13 +35,11 @@ class ScribePrompts:
         - First paragraph: Reason for visit and presenting symptoms
         - Second paragraph: Relevant history and background
         - Third paragraph: Assessment/diagnosis and treatment plan
-        - Fourth paragraph: Questions asked by the doctor (only include questions actually present in the transcripts)
-        - Fifth paragraph (if applicable): Follow-up plan and next steps
+        - Fourth paragraph: Follow-up plan and next steps
 
         **CRITICAL — Strict Accuracy Rules (Do NOT Violate):**
         - ONLY include information explicitly stated in the transcripts above. Do NOT invent or infer any details.
         - Do NOT add vitals (BP, HR, Temp, SpO2), physical exam findings, or lab results — unless they appear verbatim in the transcripts.
-        - Do NOT add questions the doctor didn't ask. Only include questions that appear word-for-word in the transcripts.
         - If the transcript doesn't mention a topic (e.g., allergies, bowel/bladder, numbness), do NOT say the patient "denies" it. Do not mention it at all.
         - Do NOT make up patient names, doctor names, ages, or dates. Only use what's in the transcripts.
         - When in doubt, leave it out. It is better to have a brief accurate summary than a detailed fabricated one.
