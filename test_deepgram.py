@@ -12,7 +12,7 @@ def main():
     try:
         deepgram: DeepgramClient = DeepgramClient(api_key=settings.DEEPGRAM_API_KEY)
 
-        with deepgram.listen.v1.connect(model="nova-3") as connection:
+        with deepgram.listen.v1.connect(model="nova-3-medical") as connection:
 
             def on_message(message) -> None:
                 if not (hasattr(message, 'channel') and hasattr(message.channel, 'alternatives')):

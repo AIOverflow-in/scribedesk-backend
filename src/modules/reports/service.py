@@ -122,7 +122,8 @@ class ReportService:
 
         p = session.patient
         age = calculate_age(p.date_of_birth)
-        parts = [f"Name: {p.full_name}"]
+        full_name = " ".join(filter(None, [p.first_name, p.last_name]))
+        parts = [f"Name: {full_name}"]
         if age:
             parts.append(f"Age: {age}")
         if p.gender:

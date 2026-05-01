@@ -55,7 +55,7 @@ class SessionListItem(BaseModel):
         resp = cls.model_validate(_session_to_dict(session))
         loaded = sa_inspect(session).unloaded
         if "patient" not in loaded and session.patient:
-            resp.patient_name = session.patient.full_name
+            resp.patient_name = " ".join(filter(None, [session.patient.first_name, session.patient.last_name]))
             resp.patient_gender = session.patient.gender
             resp.patient_age = calculate_age(session.patient.date_of_birth)
         return resp
@@ -71,7 +71,7 @@ class SessionResponse(SessionListItem):
         resp = cls.model_validate(_session_to_dict(session))
         loaded = sa_inspect(session).unloaded
         if "patient" not in loaded and session.patient:
-            resp.patient_name = session.patient.full_name
+            resp.patient_name = " ".join(filter(None, [session.patient.first_name, session.patient.last_name]))
             resp.patient_gender = session.patient.gender
             resp.patient_age = calculate_age(session.patient.date_of_birth)
         if "reports" not in loaded and session.reports:

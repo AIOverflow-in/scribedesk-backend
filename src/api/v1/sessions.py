@@ -1,6 +1,6 @@
 """Session CRUD routes — create, list, get, update, timeline."""
 
-from typing import Optional
+from typing import Literal, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Query, status
@@ -26,13 +26,19 @@ async def list_sessions(
     page: int = 1,
     page_size: int = 20,
     patient_id: Optional[UUID] = Query(None),
+    search: Optional[str] = Query(None, description="Search by session title or patient name"),
+    sort_by: Literal["created_at", "title", "patient_name"] = Query("created_at"),
+    sort_order: Literal["asc", "desc"] = Query("desc"),
 ):
-    """List sessions with pagination, optionally filtered by patient_id."""
+    """List sessions with pagination, search, and sorting."""
     items, total = await service.list(
         user_id=user_id,
         page=page,
         page_size=page_size,
         patient_id=patient_id,
+        search=search,
+        sort_by=sort_by,
+        sort_order=sort_order,
     )
 
     return PaginatedResponse(

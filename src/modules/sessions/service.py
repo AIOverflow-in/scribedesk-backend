@@ -54,9 +54,26 @@ class SessionService:
             raise NotFoundException("Session not found")
         return session
 
-    async def list(self, user_id: UUID, page: int, page_size: int, patient_id: Optional[UUID] = None) -> tuple[list[Session], int]:
-        """Paginated session list, optionally filtered by patient."""
-        return await self.repo.list_by_user(user_id, page, page_size, patient_id)
+    async def list(
+        self,
+        user_id: UUID,
+        page: int,
+        page_size: int,
+        patient_id: Optional[UUID] = None,
+        search: Optional[str] = None,
+        sort_by: str = "created_at",
+        sort_order: str = "desc",
+    ) -> tuple[list[Session], int]:
+        """Paginated session list with search and sorting."""
+        return await self.repo.list_by_user(
+            user_id,
+            page,
+            page_size,
+            patient_id=patient_id,
+            search=search,
+            sort_by=sort_by,
+            sort_order=sort_order,
+        )
 
     async def update(self, session_id: UUID, user_id: UUID, data: dict) -> Session:
         """Update session metadata (title, patient, summary, etc.)."""

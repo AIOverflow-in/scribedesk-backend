@@ -1,3 +1,4 @@
+from typing import Optional
 from uuid import UUID, uuid4
 
 from src.core.exceptions import NotFoundException
@@ -13,7 +14,8 @@ class PatientService:
         patient = Patient(
             id=uuid4(),
             user_id=user_id,
-            full_name=data["full_name"],
+            first_name=data["first_name"],
+            last_name=data.get("last_name"),
             identifier=data.get("identifier"),
             date_of_birth=data.get("date_of_birth"),
             gender=data.get("gender"),
@@ -28,8 +30,23 @@ class PatientService:
             raise NotFoundException("Patient not found")
         return patient
 
-    async def list(self, user_id: UUID, page: int, page_size: int) -> tuple[list[Patient], int]:
-        return await self.repo.list_by_user(user_id, page, page_size)
+    async def list(
+        self,
+        user_id: UUID,
+        page: int,
+        page_size: int,
+        search: Optional[str] = None,
+        sort_by: str = "created_at",
+        sort_order: str = "desc",
+    ) -> tuple[list[Patient], int]:
+        return await self.repo.list_by_user(
+            user_id,
+            page,
+            page_size,
+            search=search,
+            sort_by=sort_by,
+            sort_order=sort_order,
+        )
 
     async def update(self, patient_id: UUID, user_id: UUID, data: dict) -> Patient:
         patient = await self.get(patient_id, user_id)

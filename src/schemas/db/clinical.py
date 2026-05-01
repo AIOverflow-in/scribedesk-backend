@@ -8,7 +8,8 @@ from pydantic import BaseModel
 class PatientDb(BaseModel):
     id: UUID
     user_id: UUID
-    full_name: str
+    first_name: str
+    last_name: Optional[str] = None
     email: Optional[str] = None
     identifier: Optional[str] = None
     date_of_birth: Optional[date] = None
