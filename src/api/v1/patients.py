@@ -1,7 +1,8 @@
 """Patient CRUD routes."""
 
+from typing import Literal, Optional
 from uuid import UUID
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
 
 from src.dependencies.auth import CurrentUserIdDep
 from src.dependencies.services import PatientServiceDep
@@ -21,12 +22,18 @@ async def list_patients(
     service: PatientServiceDep,
     page: int = 1,
     page_size: int = 20,
+    search: Optional[str] = Query(None, description="Search by name or email"),
+    sort_by: Literal["created_at", "name", "email"] = Query("created_at"),
+    sort_order: Literal["asc", "desc"] = Query("desc"),
 ):
-    """List patients with pagination."""
+    """List patients with pagination, search, and sorting."""
     items, total = await service.list(
         user_id=user_id,
         page=page,
         page_size=page_size,
+        search=search,
+        sort_by=sort_by,
+        sort_order=sort_order,
     )
 
     return PaginatedResponse(

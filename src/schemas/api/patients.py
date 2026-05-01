@@ -8,7 +8,8 @@ from pydantic import BaseModel, Field
 # --- Request ---
 
 class CreatePatientRequest(BaseModel):
-    full_name: str = Field(..., min_length=1, max_length=255)
+    first_name: str = Field(..., min_length=1, max_length=100)
+    last_name: Optional[str] = Field(None, max_length=100)
     identifier: Optional[str] = Field(None, max_length=100)
     date_of_birth: Optional[date] = None
     gender: Optional[str] = Field(None, max_length=20)
@@ -17,7 +18,8 @@ class CreatePatientRequest(BaseModel):
 
 
 class UpdatePatientRequest(BaseModel):
-    full_name: Optional[str] = Field(None, min_length=1, max_length=255)
+    first_name: Optional[str] = Field(None, min_length=1, max_length=100)
+    last_name: Optional[str] = Field(None, max_length=100)
     identifier: Optional[str] = Field(None, max_length=100)
     date_of_birth: Optional[date] = None
     gender: Optional[str] = Field(None, max_length=20)
@@ -29,7 +31,8 @@ class UpdatePatientRequest(BaseModel):
 
 class PatientResponse(BaseModel):
     id: UUID
-    full_name: str
+    first_name: str
+    last_name: Optional[str] = None
     identifier: Optional[str] = None
     date_of_birth: Optional[date] = None
     gender: Optional[str] = None

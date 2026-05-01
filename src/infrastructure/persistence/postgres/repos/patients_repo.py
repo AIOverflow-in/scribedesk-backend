@@ -1,7 +1,7 @@
 from typing import Optional
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.infrastructure.persistence.postgres.models import Patient
@@ -24,8 +24,39 @@ class PatientsRepository:
         user_id: UUID,
         page: int = 1,
         page_size: int = 20,
+        search: Optional[str] = None,
+        sort_by: str = "created_at",
+        sort_order: str = "desc",
     ) -> tuple[list[Patient], int]:
-        base = select(Patient).where(Patient.user_id == user_id).order_by(Patient.created_at.desc())
+        filters = [Patient.user_id == user_id]
+
+        if search:
+            search = search.strip()
+            pattern = f"%{search}%"
+            filters.append(
+                or_(
+                    Patient.first_name.ilike(pattern),
+                    Patient.last_name.ilike(pattern),
+                    Patient.email.ilike(pattern),
+                    func.concat(
+                        func.coalesce(Patient.first_name, ""), " ",
+                        func.coalesce(Patient.last_name, ""),
+                    ).ilike(pattern),
+                )
+            )
+
+        base = select(Patient).where(*filters)
+
+        if sort_by == "name":
+            sort_col = func.concat(
+                func.coalesce(Patient.first_name, ""), " ",
+                func.coalesce(Patient.last_name, ""),
+            )
+            base = base.order_by(sort_col.asc() if sort_order == "asc" else sort_col.desc())
+        elif sort_by == "email":
+            base = base.order_by(Patient.email.asc() if sort_order == "asc" else Patient.email.desc())
+        else:
+            base = base.order_by(Patient.created_at.asc() if sort_order == "asc" else Patient.created_at.desc())
 
         count_stmt = select(func.count()).select_from(base.subquery())
         total = await self.session.scalar(count_stmt) or 0

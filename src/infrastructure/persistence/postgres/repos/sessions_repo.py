@@ -1,14 +1,13 @@
 from __future__ import annotations
 
 from typing import Optional
-from typing import Optional
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from src.infrastructure.persistence.postgres.models import Report, Session, SessionTimeline
+from src.infrastructure.persistence.postgres.models import Patient, Report, Session, SessionTimeline
 
 
 class SessionsRepository:
@@ -33,17 +32,59 @@ class SessionsRepository:
         page: int = 1,
         page_size: int = 20,
         patient_id: Optional[UUID] = None,
+        search: Optional[str] = None,
+        sort_by: str = "created_at",
+        sort_order: str = "desc",
     ) -> tuple[list[Session], int]:
         filters = [Session.user_id == user_id]
         if patient_id is not None:
             filters.append(Session.patient_id == patient_id)
-        base = select(Session).options(selectinload(Session.patient)).where(*filters).order_by(Session.created_at.desc())
+
+        base = select(Session).options(selectinload(Session.patient))
+
+        need_patient_join = search is not None or sort_by == "patient_name"
+        if need_patient_join:
+            patient_alias = (
+                select(Patient)
+                .where(Patient.user_id == user_id)
+                .subquery()
+            )
+            base = base.outerjoin(patient_alias, Session.patient_id == patient_alias.c.id)
+
+        if search:
+            search = search.strip()
+            pattern = f"%{search}%"
+            filters.append(
+                or_(
+                    Session.title.ilike(pattern),
+                    patient_alias.c.first_name.ilike(pattern),
+                    patient_alias.c.last_name.ilike(pattern),
+                    func.concat(
+                        func.coalesce(patient_alias.c.first_name, ""), " ",
+                        func.coalesce(patient_alias.c.last_name, ""),
+                    ).ilike(pattern),
+                )
+            )
+
+        base = base.where(*filters)
+
+        if sort_by == "patient_name":
+            sort_col = func.concat(
+                func.coalesce(patient_alias.c.first_name, ""), " ",
+                func.coalesce(patient_alias.c.last_name, ""),
+            )
+            base = base.order_by(sort_col.asc() if sort_order == "asc" else sort_col.desc())
+        elif sort_by == "title":
+            base = base.order_by(Session.title.asc() if sort_order == "asc" else Session.title.desc())
+        else:
+            base = base.order_by(Session.created_at.asc() if sort_order == "asc" else Session.created_at.desc())
 
         count_stmt = select(func.count()).select_from(base.subquery())
         total = await self.session.scalar(count_stmt) or 0
 
         offset = (page - 1) * page_size
         stmt = base.offset(offset).limit(page_size)
+
         result = await self.session.execute(stmt)
         items = list(result.scalars().all())
 
