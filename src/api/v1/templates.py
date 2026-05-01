@@ -22,7 +22,7 @@ async def list_templates(
     service: TemplateServiceDep,
 ):
     """List system templates and the current user's custom templates."""
-    templates = await service.list(user_id=user_id)
+    templates = await service.list(user_id=UUID(user_id))
 
     return [TemplateResponse.model_validate(t) for t in templates]
 
@@ -35,7 +35,7 @@ async def create_template(
 ):
     """Create a custom template."""
     template = await service.create(
-        user_id=user_id,
+        user_id=UUID(user_id),
         data=request.model_dump(),
     )
 
@@ -63,7 +63,7 @@ async def update_template(
     """Update your own template (not system templates)."""
     template = await service.update(
         template_id=template_id,
-        user_id=user_id,
+        user_id=UUID(user_id),
         data=request.model_dump(exclude_unset=True),
     )
 
@@ -77,6 +77,6 @@ async def delete_template(
     service: TemplateServiceDep,
 ):
     """Delete your own template (not system templates)."""
-    await service.delete(template_id=template_id, user_id=user_id)
+    await service.delete(template_id=template_id, user_id=UUID(user_id))
 
     return StatusResponse(status="success")
