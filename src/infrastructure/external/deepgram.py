@@ -2,8 +2,7 @@
 
 import asyncio
 import threading
-from collections import deque
-from typing import Awaitable, Callable
+from typing import Awaitable, Callable, Optional
 
 from deepgram import DeepgramClient as DGClient
 from deepgram.core.events import EventType
@@ -13,7 +12,7 @@ from src.core.logging import get_logger
 
 logger = get_logger(__name__)
 
-BUFFER_SIZE = settings.DEEPGRAM_CHUNK_SIZE  # number of is_final segments per flush
+BUFFER_SIZE = settings.DEEPGRAM_CHUNK_SIZE
 
 
 class DeepgramTranscriptionSession:
@@ -22,53 +21,67 @@ class DeepgramTranscriptionSession:
 
     Buffers ``is_final`` events from Deepgram and flushes them to an async
     callback once the buffer reaches the configured threshold.
+
+    Each individual ``is_final`` fragment is also forwarded progressively via
+    the optional ``on_intermediate`` callback so the frontend can display
+    live-updating text without waiting for a full flush.
     """
 
     def __init__(
         self,
         on_flush: Callable[[str], Awaitable[None]],
+        on_intermediate: Optional[Callable[[str], Awaitable[None]]] = None,
         buffer_size: int = BUFFER_SIZE,
     ):
         self._on_flush = on_flush
+        self._on_intermediate = on_intermediate
         self._buffer_size = buffer_size
-        self._buffer: deque[str] = deque()
+        self._buffer: list[str] = []
+        self._lock = threading.Lock()
         self._connection = None
-        self._loop = asyncio.get_event_loop()
+        self._connection_cm = None
+        self._loop = None
 
     # --- Internal ---
 
     def _handle_message(self, message) -> None:
-        if not (
-            hasattr(message, "channel")
-            and hasattr(message.channel, "alternatives")
-        ):
-            logger.debug(f"Received non-transcript message: {type(message).__name__}")
-            return
+        try:
+            if not (
+                hasattr(message, "channel")
+                and hasattr(message.channel, "alternatives")
+            ):
+                return
 
-        transcript = message.channel.alternatives[0].transcript
-        is_final = getattr(message, "is_final", False)
-        speech_final = getattr(message, "speech_final", False)
+            transcript = message.channel.alternatives[0].transcript
+            is_final = getattr(message, "is_final", False)
 
-        if not transcript or not is_final:
-            return
+            if not transcript or not is_final:
+                return
 
-        logger.info(f"[IS FINAL] {transcript}")
-        self._buffer.append(transcript)
-        self._flush()
+            logger.info(f"[FRAGMENT] {transcript}")
 
-    def _flush(self) -> None:
-        if not self._buffer:
-            return
+            chunk_to_flush: Optional[str] = None
 
-        chunk = " ".join(self._buffer)
-        self._buffer.clear()
+            with self._lock:
+                self._buffer.append(transcript)
+                if len(self._buffer) >= self._buffer_size:
+                    chunk_to_flush = " ".join(self._buffer)
+                    self._buffer.clear()
 
-        logger.info(f"Flushing transcript chunk ({self._buffer_size} segments)")
+            if self._on_intermediate:
+                asyncio.run_coroutine_threadsafe(
+                    self._on_intermediate(transcript),
+                    self._loop,
+                )
 
-        asyncio.run_coroutine_threadsafe(
-            self._on_flush(chunk),
-            self._loop,
-        )
+            if chunk_to_flush:
+                logger.info(f"Flushing {self._buffer_size} segments: {chunk_to_flush[:60]}...")
+                asyncio.run_coroutine_threadsafe(
+                    self._on_flush(chunk_to_flush),
+                    self._loop,
+                )
+        except Exception as e:
+            logger.error(f"Deepgram message handler error: {e}", exc_info=True)
 
     # --- Public API ---
 
@@ -77,14 +90,27 @@ class DeepgramTranscriptionSession:
         if self._connection:
             self._connection.send_media(data)
 
-    def flush_remaining(self) -> None:
-        """Flush any buffered segments (call on session end)."""
-        self._flush()
+    async def flush_remaining(self) -> None:
+        """Flush any buffered segments and wait for completion.
+
+        Call this *after* the audio loop ends but *before* finalising session
+        timing so that the stopped event doesn't race with the last flush.
+        """
+        with self._lock:
+            if not self._buffer:
+                return
+            chunk = " ".join(self._buffer)
+            self._buffer.clear()
+
+        logger.info(f"Flushing final {len(chunk)} chars")
+        await self._on_flush(chunk)
 
     # --- Context manager ---
 
     def __enter__(self):
         logger.info("Opening Deepgram connection...")
+        self._loop = asyncio.get_running_loop()
+
         client = DGClient(api_key=settings.DEEPGRAM_API_KEY)
 
         self._connection_cm = client.listen.v1.connect(
@@ -92,6 +118,9 @@ class DeepgramTranscriptionSession:
             encoding="linear16",
             sample_rate=16000,
             channels=1,
+            punctuate=True,
+            interim_results=True,
+            utterance_end_ms=1000,
         )
         logger.info("Entering Deepgram connection context...")
         self._connection = self._connection_cm.__enter__()
@@ -114,7 +143,6 @@ class DeepgramTranscriptionSession:
         return self
 
     def __exit__(self, *args):
-        self.flush_remaining()
         if self._connection_cm:
             self._connection_cm.__exit__(*args)
 
@@ -125,9 +153,11 @@ class DeepgramClient:
     def create_session(
         self,
         on_flush: Callable[[str], Awaitable[None]],
+        on_intermediate: Optional[Callable[[str], Awaitable[None]]] = None,
         buffer_size: int = BUFFER_SIZE,
     ) -> DeepgramTranscriptionSession:
         return DeepgramTranscriptionSession(
             on_flush=on_flush,
+            on_intermediate=on_intermediate,
             buffer_size=buffer_size,
         )
