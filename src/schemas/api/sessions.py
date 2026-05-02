@@ -31,6 +31,10 @@ class UpdateSessionRequest(BaseModel):
     clinical_summary: Optional[str] = None
 
 
+class PauseSessionRequest(BaseModel):
+    generate_summary: bool
+
+
 # --- Response ---
 
 class SessionListItem(BaseModel):

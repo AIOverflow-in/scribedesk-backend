@@ -58,8 +58,6 @@ class DeepgramTranscriptionSession:
             if not transcript or not is_final:
                 return
 
-            logger.info(f"[FRAGMENT] {transcript}")
-
             chunk_to_flush: Optional[str] = None
 
             with self._lock:
@@ -108,7 +106,6 @@ class DeepgramTranscriptionSession:
     # --- Context manager ---
 
     def __enter__(self):
-        logger.info("Opening Deepgram connection...")
         self._loop = asyncio.get_running_loop()
 
         client = DGClient(api_key=settings.DEEPGRAM_API_KEY)
@@ -122,22 +119,16 @@ class DeepgramTranscriptionSession:
             interim_results=True,
             utterance_end_ms=1000,
         )
-        logger.info("Entering Deepgram connection context...")
         self._connection = self._connection_cm.__enter__()
-        logger.info("Deepgram connection established, registering handlers...")
-        self._connection.on(EventType.OPEN, lambda _: logger.info("Deepgram connection opened"))
         self._connection.on(EventType.MESSAGE, self._handle_message)
         self._connection.on(EventType.CLOSE, lambda _: logger.info("Deepgram connection closed"))
         self._connection.on(EventType.ERROR, lambda e: logger.error(f"Deepgram error: {e}"))
 
         def _listen():
             try:
-                logger.info("Deepgram listener thread started")
                 self._connection.start_listening()
             except Exception as e:
                 logger.error(f"Deepgram listener thread error: {e}", exc_info=True)
-            finally:
-                logger.info("Deepgram listener thread ended")
 
         threading.Thread(target=_listen, daemon=True).start()
         return self
