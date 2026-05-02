@@ -48,6 +48,7 @@ class Settings(BaseSettings):
     DEEPGRAM_API_KEY: str
     DEEPGRAM_MODEL: str = "nova-3-medical"
     DEEPGRAM_CHUNK_SIZE: int = 5
+    SCRIBE_IDLE_TIMEOUT_SECONDS: int = 60
     BRAVE_SEARCH_API_KEY: Optional[str] = None
 
     S3_ENDPOINT_URL: str

@@ -8,6 +8,7 @@ from uuid import UUID, uuid4
 
 from fastapi import WebSocket, WebSocketDisconnect
 
+from src.core.config import settings
 from src.core.exceptions import NotFoundException
 from src.core.logging import get_logger
 from src.infrastructure.external.deepgram import DeepgramClient
@@ -140,63 +141,38 @@ class ScribeStreamService:
         })
 
         segment_start = datetime.now(timezone.utc)
-
-        def _relative_seconds() -> int:
-            elapsed = int((datetime.now(timezone.utc) - segment_start).total_seconds())
-            return accumulated + elapsed
-
-        batch_start_ts: int | None = None
-
-        async def on_intermediate(text: str) -> None:
-            nonlocal batch_start_ts
-            ts = _relative_seconds()
-            if batch_start_ts is None:
-                batch_start_ts = ts
-            msg = {
-                "type": "transcript_partial",
-                "text": text,
-                "timestamp": ts,
-            }
-            await websocket.send_json(msg)
-
-        async def on_flush(text: str) -> None:
-            nonlocal batch_start_ts
-            ts = batch_start_ts if batch_start_ts is not None else _relative_seconds()
-            batch_start_ts = None
-
-            async with async_session_maker() as db:
-                entry = SessionTimeline(
-                    id=uuid4(),
-                    session_id=session_id,
-                    type="transcript",
-                    content=text,
-                    relative_seconds=ts,
-                    created_at=datetime.now(timezone.utc),
-                )
-                repo = SessionsRepository(db)
-                await repo.add_timeline_entry(entry)
-
-            if not ws_closed:
-                msg = {
-                    "type": "transcript_chunk",
-                    "text": text,
-                    "timestamp": ts,
-                }
-                await websocket.send_json(msg)
-            logger.info(f"[FLUSH DB] {text[:60]}...")
-
-        ws_closed = False
+        ctx = {
+            "accumulated": accumulated,
+            "segment_start": segment_start,
+            "batch_start_ts": None,
+            "ws_closed": False,
+            "last_deepgram_at": datetime.now(timezone.utc),
+            "notified_idle": False,
+        }
 
         with self.deepgram.create_session(
-            on_flush=on_flush,
-            on_intermediate=on_intermediate,
+            on_flush=lambda text: self._on_flush(ctx, websocket, session_id, text),
+            on_intermediate=lambda text: self._on_intermediate(ctx, websocket, text),
         ) as dg_session:
             try:
                 while True:
                     data = await websocket.receive_bytes()
                     await asyncio.to_thread(dg_session.send_audio, data)
+
+                    now = datetime.now(timezone.utc)
+                    idle = (now - ctx["last_deepgram_at"]).total_seconds()
+                    if idle >= settings.SCRIBE_IDLE_TIMEOUT_SECONDS and not ctx["notified_idle"]:
+                        ctx["notified_idle"] = True
+                        logger.info(
+                            f"Session {session_id} idle for {idle:.0f}s — flushing and closing"
+                        )
+                        await websocket.send_json({
+                            "type": "idle_timeout",
+                            "idle_seconds": int(idle),
+                        })
+                        break
             except WebSocketDisconnect:
-                ws_closed = True
+                ctx["ws_closed"] = True
                 logger.info(f"Client disconnected from session {session_id}")
             except Exception as e:
                 logger.error(f"Transcription error for session {session_id}: {e}", exc_info=True)
@@ -210,3 +186,46 @@ class ScribeStreamService:
             "elapsed_seconds": elapsed,
             "is_first_stop": is_first_stop,
         })
+
+    # --- Internal helpers ---
+
+    @staticmethod
+    def _relative_seconds(ctx: dict) -> int:
+        elapsed = int((datetime.now(timezone.utc) - ctx["segment_start"]).total_seconds())
+        return ctx["accumulated"] + elapsed
+
+    async def _on_intermediate(self, ctx: dict, websocket: WebSocket, text: str) -> None:
+        ts = self._relative_seconds(ctx)
+        if ctx["batch_start_ts"] is None:
+            ctx["batch_start_ts"] = ts
+        ctx["last_deepgram_at"] = datetime.now(timezone.utc)
+        await websocket.send_json({
+            "type": "transcript_partial",
+            "text": text,
+            "timestamp": ts,
+        })
+
+    async def _on_flush(self, ctx: dict, websocket: WebSocket, session_id: UUID, text: str) -> None:
+        ts = ctx["batch_start_ts"] if ctx["batch_start_ts"] is not None else self._relative_seconds(ctx)
+        ctx["batch_start_ts"] = None
+
+        async with async_session_maker() as db:
+            entry = SessionTimeline(
+                id=uuid4(),
+                session_id=session_id,
+                type="transcript",
+                content=text,
+                relative_seconds=ts,
+                created_at=datetime.now(timezone.utc),
+            )
+            repo = SessionsRepository(db)
+            await repo.add_timeline_entry(entry)
+
+        if not ctx["ws_closed"]:
+            await websocket.send_json({
+                "type": "transcript_chunk",
+                "text": text,
+                "timestamp": ts,
+            })
+        logger.info(f"[FLUSH DB] {text[:60]}...")
+
