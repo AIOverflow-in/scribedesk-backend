@@ -5,11 +5,11 @@ from uuid import UUID
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from src.core.logging import get_logger
-from src.dependencies.ai import get_fast_llm_service, get_tiny_llm_service
 from src.dependencies.auth import WsCurrentUserIdDep
+from src.infrastructure.external.deepgram import DeepgramClient
 from src.infrastructure.persistence.postgres.database import async_session_maker
 from src.infrastructure.persistence.postgres.repos.sessions_repo import SessionsRepository
-from src.modules.sessions.service import SessionService
+from src.modules.sessions.stream import ScribeStreamService
 
 logger = get_logger(__name__)
 
@@ -26,17 +26,16 @@ async def scribe_websocket(
     Real-time scribe WebSocket.
 
     * Authenticated via ``?token=`` (handled by ``WsCurrentUserIdDep``).
-    * Delegates to ``SessionService.handle_transcription_stream``.
+    * Delegates to ``ScribeStreamService.handle_transcription_stream``.
     """
     await websocket.accept()
 
     try:
         async with async_session_maker() as db:
             repo = SessionsRepository(db)
-            service = SessionService(
+            service = ScribeStreamService(
                 repo=repo,
-                tiny_llm=get_tiny_llm_service(),
-                fast_llm=get_fast_llm_service(),
+                deepgram_client=DeepgramClient(),
             )
             await service.handle_transcription_stream(
                 websocket=websocket,

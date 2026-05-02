@@ -10,6 +10,7 @@ from src.dependencies.services import SessionServiceDep
 from src.schemas.api.common import PaginatedResponse
 from src.schemas.api.sessions import (
     CreateSessionRequest,
+    PauseSessionRequest,
     SessionListItem,
     SessionResponse,
     SessionTimelineResponse,
@@ -101,6 +102,23 @@ async def update_session(
         session_id=session_id,
         user_id=user_id,
         data=request.model_dump(exclude_unset=True),
+    )
+
+    return SessionResponse.from_session(session)
+
+
+@router.post("/sessions/{session_id}/pause", response_model=SessionResponse)
+async def pause_session(
+    session_id: UUID,
+    request: PauseSessionRequest,
+    user_id: CurrentUserIdDep,
+    service: SessionServiceDep,
+):
+    """Pause or stop a session. Generates title/summary if needed."""
+    session = await service.pause_session(
+        session_id=session_id,
+        user_id=UUID(user_id),
+        with_summary=request.generate_summary,
     )
 
     return SessionResponse.from_session(session)

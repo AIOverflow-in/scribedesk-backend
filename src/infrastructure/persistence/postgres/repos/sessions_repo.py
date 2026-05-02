@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Optional
 from uuid import UUID
 
@@ -7,7 +8,10 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from src.core.logging import get_logger
 from src.infrastructure.persistence.postgres.models import Patient, Report, Session, SessionTimeline
+
+logger = get_logger(__name__)
 
 
 class SessionsRepository:
@@ -131,10 +135,24 @@ class SessionsRepository:
         """
         Get transcript text entries after a given timeline ID.
 
+        Uses the ``created_at`` of the checkpoint transcript (not UUID
+        ordering) so that newly inserted entries are never missed.
+
         If ``after_id`` is ``None``, returns all transcripts for the session.
         ``limit`` caps how many entries to return (useful for title generation).
         Returns ``(texts, max_id)`` where ``max_id`` is the last transcript ID.
         """
+        after_ts = None
+        if after_id is not None:
+            checkpoint = await self.session.get(SessionTimeline, after_id)
+            if checkpoint is not None and checkpoint.created_at is not None:
+                after_ts = checkpoint.created_at
+                logger.info(
+                    f"[TRANSCRIPTS_SINCE] checkpoint_id={after_id} "
+                    f"checkpoint_created_at={after_ts} "
+                    f"looking_for > {after_ts}"
+                )
+
         stmt = (
             select(SessionTimeline)
             .where(
@@ -144,15 +162,25 @@ class SessionsRepository:
             .order_by(SessionTimeline.created_at.asc())
         )
 
-        if after_id is not None:
-            from sqlalchemy import and_
-            stmt = stmt.where(SessionTimeline.id > after_id)
+        if after_ts is not None:
+            stmt = stmt.where(SessionTimeline.created_at > after_ts)
 
         if limit is not None:
             stmt = stmt.limit(limit)
 
         result = await self.session.execute(stmt)
         entries = list(result.scalars().all())
+
+        if after_ts is not None:
+            logger.info(
+                f"[TRANSCRIPTS_SINCE] found={len(entries)} entries "
+                f"first_created_at={entries[0].created_at if entries else 'N/A'} "
+                f"last_created_at={entries[-1].created_at if entries else 'N/A'}"
+            )
+        else:
+            logger.info(
+                f"[TRANSCRIPTS_SINCE] first call, found={len(entries)} entries"
+            )
 
         texts = [e.content for e in entries if e.content]
         max_id = entries[-1].id if entries else None
