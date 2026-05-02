@@ -1,6 +1,8 @@
 from langchain_core.language_models import BaseChatModel
 from langchain_groq import ChatGroq
 from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_openai import ChatOpenAI
+
 from src.core.config import settings
 
 class LLMFactory:
@@ -18,6 +20,8 @@ class LLMFactory:
             return LLMFactory._create_groq(model, temperature, reasoning_effort)
         elif provider == "google":
             return LLMFactory._create_google(model, temperature, reasoning_effort)
+        elif provider == "openai":
+            return LLMFactory._create_openai(model, temperature, reasoning_effort)
 
         raise ValueError(f"Unsupported LLM provider: {provider}")
 
@@ -43,4 +47,16 @@ class LLMFactory:
             model=model,
             temperature=temperature,
             google_api_key=settings.GEMINI_API_KEY,
+        )
+
+    @staticmethod
+    def _create_openai(model: str, temperature: float, effort: str) -> ChatOpenAI:
+        if not settings.OPENAI_API_KEY:
+            raise ValueError("OPENAI_API_KEY is missing")
+
+        return ChatOpenAI(
+            model=model,
+            temperature=temperature,
+            reasoning_effort=effort,
+            api_key=settings.OPENAI_API_KEY
         )

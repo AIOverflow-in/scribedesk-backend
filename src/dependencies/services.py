@@ -38,7 +38,11 @@ async def get_session_service(
     tiny_llm: TinyLLMDep,
     fast_llm: FastLLMDep,
 ) -> SessionService:
-    return SessionService(repo=sessions_repo, tiny_llm=tiny_llm, fast_llm=fast_llm)
+    return SessionService(
+        repo=sessions_repo, 
+        tiny_llm=tiny_llm, 
+        fast_llm=fast_llm
+    )
 
 
 async def get_template_service(templates_repo: TemplatesRepositoryDep) -> TemplateService:
