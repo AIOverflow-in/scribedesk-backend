@@ -24,6 +24,7 @@ class Settings(BaseSettings):
 
     SESSION_EXPIRY_SECONDS: int = 86400
 
+    OPENAI_API_KEY: Optional[str] = None
     GROQ_API_KEY: str
     GEMINI_API_KEY: Optional[str] = None
 

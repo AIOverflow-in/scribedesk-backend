@@ -18,6 +18,7 @@ langgraph==1.0.5
 langgraph-prebuilt==1.0.5
 langchain-google-genai==4.1.0
 langchain-groq==1.0.0
+langchain-openai==1.0.1
 google-genai>=1.0.0
 
 # External Services (NEW)
