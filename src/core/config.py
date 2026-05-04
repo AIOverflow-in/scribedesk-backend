@@ -28,6 +28,12 @@ class Settings(BaseSettings):
     GROQ_API_KEY: str
     GEMINI_API_KEY: Optional[str] = None
 
+    # LangSmith Tracing
+    LANGSMITH_TRACING: bool = True
+    LANGSMITH_ENDPOINT: str = "https://eu.api.smith.langchain.com"
+    LANGSMITH_API_KEY: Optional[str] = None
+    LANGSMITH_PROJECT: str = "ScribeDesk"
+
     FAST_LLM_PROVIDER: str = "groq"
     FAST_LLM_MODEL: str = "openai/gpt-oss-20b"
     FAST_LLM_TEMP: float = 0.2
@@ -57,6 +63,10 @@ class Settings(BaseSettings):
     S3_ACCESS_KEY_ID: str
     S3_SECRET_ACCESS_KEY: str
     S3_REGION: str = "us-east-1"
+
+    GOOGLE_CLIENT_ID: str = ""
+    GOOGLE_CLIENT_SECRET: str = ""
+    GOOGLE_USERINFO_URL: str = "https://www.googleapis.com/oauth2/v3/userinfo"
 
     STRIPE_SECRET_KEY: str
     STRIPE_WEBHOOK_SECRET: str

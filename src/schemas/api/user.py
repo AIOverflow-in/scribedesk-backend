@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import datetime
 from typing import Optional
 from uuid import UUID
 
@@ -25,10 +25,10 @@ class UserProfileResponse(BaseModel):
     email: str
     first_name: str
     last_name: Optional[str] = None
-    dob: Optional[date] = None
     gender: Optional[str] = None
     speciality: Optional[str] = None
     signature_url: Optional[str] = None
+    is_onboarded: bool = False
     created_at: datetime
     updated_at: datetime
 
@@ -43,7 +43,6 @@ class UserProfileResponse(BaseModel):
 class ProfileUpdateRequest(BaseModel):
     first_name: Optional[str] = Field(None, min_length=1, max_length=100)
     last_name: Optional[str] = Field(None, max_length=100)
-    dob: Optional[date] = None
     gender: Optional[str] = Field(None, pattern="^(Male|Female|Other|Prefer not to say)$")
     speciality: Optional[str] = Field(None, max_length=100)
 
