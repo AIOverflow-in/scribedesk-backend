@@ -28,4 +28,4 @@ COPY . .
 EXPOSE 8000
 
 # Run with Uvicorn for production
-CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1", "--limit-concurrency", "1000", "--backlog", "2048", "--timeout-keep-alive", "75"]
+CMD ["/bin/sh", "-c", "alembic upgrade head && exec uvicorn src.main:app --host 0.0.0.0 --port 8000 --workers 1 --limit-concurrency 1000 --backlog 2048 --timeout-keep-alive 75"]
