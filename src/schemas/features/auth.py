@@ -13,3 +13,8 @@ class GoogleUserInfo(BaseModel):
     name: Optional[str] = None
     picture: Optional[str] = None
     email_verified: bool = False
+
+
+class AuthResult(BaseModel):
+    token: str
+    onboarding_pending: bool = False

@@ -1,6 +1,5 @@
 """Authentication service — register, login, Google OAuth, provider management."""
 
-from dataclasses import dataclass
 from uuid import UUID, uuid4
 
 from src.core.exceptions import (
@@ -14,12 +13,7 @@ from src.infrastructure.external.google_oauth import verify_google_token
 from src.infrastructure.persistence.postgres.models import Clinic, User, UserAuthProvider
 from src.infrastructure.persistence.postgres.repos.auth_repo import AuthRepository
 from src.infrastructure.persistence.redis.sessions import SessionManager
-
-
-@dataclass
-class AuthResult:
-    token: str
-    onboarding_pending: bool = False
+from src.schemas.features.auth import AuthResult
 
 
 class AuthService:
