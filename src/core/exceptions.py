@@ -77,6 +77,13 @@ class UsageLimitException(AppException):
         super().__init__(message=message, code="USAGE_LIMIT_EXCEEDED", status_code=status.HTTP_403_FORBIDDEN, details=details)
 
 
+class GoogleOAuthException(AppException):
+    """Google OAuth token verification failed."""
+
+    def __init__(self, message: str = "Google authentication failed", details: Optional[Dict[str, Any]] = None):
+        super().__init__(message=message, code="GOOGLE_OAUTH_ERROR", status_code=status.HTTP_401_UNAUTHORIZED, details=details)
+
+
 # --- Exception Handlers ---
 
 async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:

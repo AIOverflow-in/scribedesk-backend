@@ -11,9 +11,9 @@ class UserDb(BaseModel):
     first_name: str
     last_name: Optional[str] = None
     signature_url: Optional[str] = None
-    dob: Optional[date] = None
     gender: Optional[str] = None
     speciality: Optional[str] = None
+    is_onboarded: bool = False
     created_at: datetime
     updated_at: datetime
 

@@ -4,7 +4,7 @@ import uuid
 from datetime import date, datetime
 from typing import Optional
 
-from sqlalchemy import Boolean, Date, DateTime, Integer, String, Text, ForeignKey, func
+from sqlalchemy import Boolean, Date, DateTime, Integer, String, Text, ForeignKey, UniqueConstraint, Index, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
@@ -25,18 +25,39 @@ class User(TimestampMixin, Base):
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
-    password_hash: Mapped[Optional[str]] = mapped_column(String(255))
     first_name: Mapped[str] = mapped_column(String(100))
     last_name: Mapped[Optional[str]] = mapped_column(String(100))
     signature_url: Mapped[Optional[str]] = mapped_column(String(500))
-    dob: Mapped[Optional[date]] = mapped_column(Date)
     gender: Mapped[Optional[str]] = mapped_column(String(20))
     speciality: Mapped[Optional[str]] = mapped_column(String(100))
+    is_onboarded: Mapped[bool] = mapped_column(Boolean, default=False)
 
     clinic: Mapped[Optional["Clinic"]] = relationship(back_populates="user", uselist=False, cascade="all, delete-orphan")
+    auth_providers: Mapped[list["UserAuthProvider"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     patients: Mapped[list["Patient"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     sessions: Mapped[list["Session"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     templates: Mapped[list["Template"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+
+
+class UserAuthProvider(Base):
+    __tablename__ = "user_auth_providers"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    provider: Mapped[str] = mapped_column(String(20))
+    provider_user_id: Mapped[Optional[str]] = mapped_column(String(255))
+    email: Mapped[str] = mapped_column(String(255))
+    password_hash: Mapped[Optional[str]] = mapped_column(String(255))
+    is_primary: Mapped[bool] = mapped_column(Boolean, default=False)
+    linked_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    last_used_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+
+    user: Mapped["User"] = relationship(back_populates="auth_providers")
+
+    __table_args__ = (
+        UniqueConstraint("provider", "provider_user_id", name="uq_provider_user_id"),
+        Index("idx_auth_providers_user", "user_id"),
+    )
 
 
 class Clinic(Base):

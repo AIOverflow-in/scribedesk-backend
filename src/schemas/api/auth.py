@@ -1,5 +1,6 @@
-from datetime import date
+from datetime import date, datetime
 from typing import Optional
+from uuid import UUID
 
 from pydantic import BaseModel, EmailStr, Field
 
@@ -9,7 +10,6 @@ from pydantic import BaseModel, EmailStr, Field
 class UserProfileData(BaseModel):
     first_name: str = Field(..., min_length=1, max_length=100)
     last_name: Optional[str] = Field(None, max_length=100)
-    dob: Optional[date] = None
     gender: Optional[str] = Field(None, pattern="^(Male|Female|Other|Prefer not to say)$")
     speciality: Optional[str] = Field(None, max_length=100)
 
@@ -37,8 +37,44 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class GoogleLoginRequest(BaseModel):
+    idToken: str
+
+
+class ConnectProviderRequest(BaseModel):
+    provider: str = Field(..., pattern="^(google|apple|microsoft)$")
+    token: str
+
+
+class SetPasswordRequest(BaseModel):
+    password: str = Field(..., min_length=8)
+    confirm_password: str = Field(..., min_length=8)
+
+
+class OnboardingRequest(BaseModel):
+    profile: UserProfileData
+    clinic: ClinicData
+
+
 # --- Response ---
 
 class AuthResponse(BaseModel):
     status: str = "success"
     session_token: Optional[str] = None
+    onboarding_pending: bool = False
+
+
+class ProviderResponse(BaseModel):
+    id: UUID
+    provider: str
+    email: str
+    is_primary: bool
+    linked_at: datetime
+    last_used_at: Optional[datetime] = None
+
+    model_config = {"from_attributes": True}
+
+
+class ProvidersListResponse(BaseModel):
+    status: str = "success"
+    providers: list[ProviderResponse]

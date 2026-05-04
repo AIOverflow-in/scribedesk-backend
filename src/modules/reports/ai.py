@@ -3,6 +3,7 @@
 from src.content.prompts.reports import ReportPrompts
 from src.core.logging import get_logger
 from src.infrastructure.llm.service import LLMService
+from src.utils.formatters import format_current_date
 
 logger = get_logger(__name__)
 
@@ -17,6 +18,7 @@ async def generate_report(
     additional_context: str,
 ) -> str:
     prompt = ReportPrompts.GENERATE.format(
+        current_date=format_current_date(),
         template_content=template_content,
         transcripts=transcripts,
         clinical_summary=clinical_summary,
