@@ -97,7 +97,7 @@ class Session(TimestampMixin, Base):
     __tablename__ = "sessions"
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
-    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     patient_id: Mapped[Optional[uuid.UUID]] = mapped_column(ForeignKey("patients.id", ondelete="SET NULL"))
     title: Mapped[str] = mapped_column(String(255))
     description: Mapped[Optional[str]] = mapped_column(Text)
@@ -116,6 +116,10 @@ class Session(TimestampMixin, Base):
         foreign_keys="SessionTimeline.session_id",
     )
     reports: Mapped[list["Report"]] = relationship(back_populates="session", cascade="all, delete-orphan", passive_deletes=True)
+
+    __table_args__ = (
+        Index("idx_sessions_user_created", "user_id", "created_at"),
+    )
 
 
 class SessionTimeline(Base):

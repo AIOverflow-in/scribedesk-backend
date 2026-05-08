@@ -2,6 +2,7 @@
 
 import asyncio
 import threading
+import time
 from typing import Awaitable, Callable, Optional
 
 from deepgram import DeepgramClient as DGClient
@@ -13,6 +14,8 @@ from src.core.logging import get_logger
 logger = get_logger(__name__)
 
 BUFFER_SIZE = settings.DEEPGRAM_CHUNK_SIZE
+KEEPALIVE_INTERVAL = 5
+KEEPALIVE_IDLE_THRESHOLD = 3
 
 
 class DeepgramTranscriptionSession:
@@ -25,6 +28,9 @@ class DeepgramTranscriptionSession:
     Each individual ``is_final`` fragment is also forwarded progressively via
     the optional ``on_intermediate`` callback so the frontend can display
     live-updating text without waiting for a full flush.
+
+    Automatically sends KeepAlive messages to Deepgram every 5 seconds
+    when no audio is being streamed.
     """
 
     def __init__(
@@ -41,8 +47,22 @@ class DeepgramTranscriptionSession:
         self._connection = None
         self._connection_cm = None
         self._loop = None
+        self._last_media_at = 0.0
+        self._keepalive_stop = threading.Event()
 
     # --- Internal ---
+
+    def _keepalive_loop(self) -> None:
+        while not self._keepalive_stop.is_set():
+            self._keepalive_stop.wait(KEEPALIVE_INTERVAL)
+            if self._keepalive_stop.is_set():
+                break
+            idle = time.time() - self._last_media_at
+            if idle >= KEEPALIVE_IDLE_THRESHOLD and self._connection:
+                try:
+                    self._connection.send_message({"type": "KeepAlive"})
+                except Exception as e:
+                    logger.debug(f"KeepAlive send error: {e}")
 
     def _handle_message(self, message) -> None:
         try:
@@ -85,6 +105,7 @@ class DeepgramTranscriptionSession:
 
     def send_audio(self, data: bytes) -> None:
         """Forward raw audio bytes to Deepgram."""
+        self._last_media_at = time.time()
         if self._connection:
             self._connection.send_media(data)
 
@@ -131,9 +152,11 @@ class DeepgramTranscriptionSession:
                 logger.error(f"Deepgram listener thread error: {e}", exc_info=True)
 
         threading.Thread(target=_listen, daemon=True).start()
+        threading.Thread(target=self._keepalive_loop, daemon=True).start()
         return self
 
     def __exit__(self, *args):
+        self._keepalive_stop.set()
         if self._connection_cm:
             self._connection_cm.__exit__(*args)
 

@@ -70,6 +70,9 @@ class SessionsRepository:
                 )
             )
 
+        count_stmt = select(func.count()).select_from(Session).where(*filters)
+        total = await self.session.scalar(count_stmt) or 0
+
         base = base.where(*filters)
 
         if sort_by == "patient_name":
@@ -82,9 +85,6 @@ class SessionsRepository:
             base = base.order_by(Session.title.asc() if sort_order == "asc" else Session.title.desc())
         else:
             base = base.order_by(Session.created_at.asc() if sort_order == "asc" else Session.created_at.desc())
-
-        count_stmt = select(func.count()).select_from(base.subquery())
-        total = await self.session.scalar(count_stmt) or 0
 
         offset = (page - 1) * page_size
         stmt = base.offset(offset).limit(page_size)

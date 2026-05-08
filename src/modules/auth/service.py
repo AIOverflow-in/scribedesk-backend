@@ -76,6 +76,14 @@ class AuthService:
 
         provider = await self.auth_repo.get_email_provider(email)
         if not provider or not provider.password_hash:
+            oauth_providers = await self.auth_repo.get_oauth_provider_names(user.id)
+            if oauth_providers:
+                names = [p.title() for p in oauth_providers]
+                label = " or ".join(names)
+                raise UnauthorizedException(
+                    f"This account uses {label} login. "
+                    f"Please sign in with {label} instead."
+                )
             raise UnauthorizedException("Invalid email or password")
 
         if not await verify_password_async(password, provider.password_hash):
