@@ -7,6 +7,7 @@ from redis.asyncio import Redis
 
 from src.dependencies.db import get_redis
 from src.infrastructure.external.deepgram import DeepgramClient
+from src.infrastructure.persistence.redis.pubsub import PubSubManager
 from src.infrastructure.persistence.redis.sessions import SessionManager
 
 _deepgram_client: DeepgramClient | None = None
@@ -18,6 +19,12 @@ def get_session_manager(
     return SessionManager(redis_client=redis)
 
 
+def get_pubsub_manager(
+    redis: Redis = Depends(get_redis),
+) -> PubSubManager:
+    return PubSubManager(redis_client=redis)
+
+
 def get_deepgram_client() -> DeepgramClient:
     global _deepgram_client
     if _deepgram_client is None:
@@ -26,4 +33,5 @@ def get_deepgram_client() -> DeepgramClient:
 
 
 SessionManagerDep = Annotated[SessionManager, Depends(get_session_manager)]
+PubSubManagerDep = Annotated[PubSubManager, Depends(get_pubsub_manager)]
 DeepgramClientDep = Annotated[DeepgramClient, Depends(get_deepgram_client)]

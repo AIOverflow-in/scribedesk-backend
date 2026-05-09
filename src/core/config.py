@@ -4,7 +4,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    PROJECT_NAME: str = "Medical Copilot Extension API"
+    PROJECT_NAME: str = "ScribeDesk Backend"
     API_V1_PREFIX: str = "/api/v1"
     ENVIRONMENT: str = "development"
     DEBUG: bool = False

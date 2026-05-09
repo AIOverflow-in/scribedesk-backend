@@ -24,6 +24,7 @@ class SessionsRepository:
             .options(
                 selectinload(Session.patient),
                 selectinload(Session.reports).selectinload(Report.template),
+                selectinload(Session.ai_conversations),
             )
             .where(Session.id == session_id, Session.user_id == user_id)
         )
