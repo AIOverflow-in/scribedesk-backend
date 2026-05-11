@@ -7,7 +7,8 @@ from src.agent.state import AgentState
 from src.agent.tools import AGENT_TOOLS
 from src.content.prompts.chat import ChatPrompts
 from src.core.logging import get_logger
-from src.dependencies.ai import get_fast_llm_service
+from src.dependencies.ai import get_smart_llm_service
+from src.utils.formatters import format_current_date
 
 logger = get_logger(__name__)
 
@@ -19,7 +20,7 @@ async def agent_node(state: AgentState) -> Dict[str, Any]:
     session_ctx = state.get("session_context")
     patient_ctx = state.get("patient_context")
 
-    llm_service = get_fast_llm_service()
+    llm_service = get_smart_llm_service()
 
     citation_instr = ""
     has_search = any(isinstance(m, ToolMessage) and m.name == "web_search" for m in messages)
@@ -27,6 +28,7 @@ async def agent_node(state: AgentState) -> Dict[str, Any]:
         citation_instr = "\n\n" + ChatPrompts.CITATION_INSTRUCTIONS
 
     system_content = ChatPrompts.COPILOT_SYSTEM.format(
+        current_date=format_current_date(),
         patient_context=format_patient_context(patient_ctx),
         session_context=format_session_context(session_ctx),
     ) + citation_instr

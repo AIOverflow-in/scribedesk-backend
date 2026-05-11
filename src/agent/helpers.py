@@ -1,9 +1,11 @@
 def format_patient_context(ctx: dict | None) -> str:
     if not ctx:
-        return "No patient linked to this conversation."
+        return "(None)"
     parts = [
         f"Name: {ctx.get('first_name', 'Unknown')} {ctx.get('last_name', '')}",
     ]
+    if ctx.get("id"):
+        parts.append(f"ID: {ctx['id']}")
     if ctx.get("date_of_birth"):
         parts.append(f"DOB: {ctx['date_of_birth']}")
     if ctx.get("gender"):
@@ -15,7 +17,7 @@ def format_patient_context(ctx: dict | None) -> str:
 
 def format_session_context(ctx: dict | None) -> str:
     if not ctx:
-        return "No active session."
+        return "(None)"
     return (
         f"Title: {ctx.get('title', 'N/A')}\n"
         f"Status: {ctx.get('status', 'N/A')}\n"

@@ -3,10 +3,12 @@ import time
 import uuid
 from typing import AsyncGenerator, Optional
 
+from langchain_core.runnables import RunnableConfig
+
 from src.agent.graph import agent_app
 from src.content.prompts.chat import ChatPrompts
 from src.core.logging import get_logger
-from src.dependencies.ai import get_fast_llm_service
+from src.dependencies.ai import get_tiny_llm_service
 from src.infrastructure.persistence.postgres.repos.ai_conversations_repo import AIConversationsRepository
 from src.infrastructure.persistence.postgres.repos.patients_repo import PatientsRepository
 from src.infrastructure.persistence.postgres.repos.sessions_repo import SessionsRepository
@@ -32,7 +34,7 @@ class ChatService:
         self.sessions_repo = sessions_repo
         self.patients_repo = patients_repo
         self.pubsub_manager = pubsub_manager
-        self.llm_service = get_fast_llm_service()
+        self.llm_service = get_tiny_llm_service()
 
     # --- Main stream ---
 
@@ -73,9 +75,14 @@ class ChatService:
                 patient_context=patient_context.model_dump() if patient_context else None,
             )
 
+            run_config = RunnableConfig(configurable={
+                "session_id": str(conversation.session_id) if conversation.session_id else None,
+                "patient_id": str(conversation.patient_id) if conversation.patient_id else None,
+            })
+
             full_response, citations = "", None
 
-            async for event in agent_app.astream_events(state, version="v2"):
+            async for event in agent_app.astream_events(state, config=run_config, version="v2"):
                 chunk = ChatEventHandler.handle_event(event)
                 if not chunk:
                     continue
@@ -93,6 +100,15 @@ class ChatService:
                     content=full_response,
                     input_method="text",
                     artifacts=artifacts,
+                )
+                await self.ai_conversations_repo.update_timestamp(conversation.id)
+            else:
+                logger.warning(f"Empty LLM response for user={user_id}, conv={conversation.id}")
+                await self.ai_conversations_repo.add_message(
+                    conversation_id=conversation.id,
+                    role="assistant",
+                    content="I'm sorry, I couldn't generate a response. Please try rephrasing.",
+                    input_method="text",
                 )
                 await self.ai_conversations_repo.update_timestamp(conversation.id)
 
