@@ -116,6 +116,43 @@ class ScribeStreamService:
 
     # --- Full transcription stream ---
 
+    async def _run_audio_loop(
+        self,
+        ctx: dict,
+        websocket: WebSocket,
+        dg_session,
+    ) -> None:
+        while True:
+            data = await websocket.receive_bytes()
+            ctx["last_audio_at"] = datetime.now(timezone.utc)
+            await asyncio.to_thread(dg_session.send_audio, data)
+
+    async def _run_idle_checker(
+        self,
+        ctx: dict,
+        websocket: WebSocket,
+        session_id: UUID,
+    ) -> None:
+        while True:
+            await asyncio.sleep(5)
+            now = datetime.now(timezone.utc)
+            audio_idle = (now - ctx["last_audio_at"]).total_seconds()
+            dg_idle = (now - ctx["last_deepgram_at"]).total_seconds()
+
+            if ctx["ws_closed"] or ctx["notified_idle"]:
+                break
+
+            if max(audio_idle, dg_idle) >= settings.SCRIBE_IDLE_TIMEOUT_SECONDS:
+                ctx["notified_idle"] = True
+                logger.info(
+                    f"Session {session_id} idle for {max(audio_idle, dg_idle):.0f}s — flushing and closing"
+                )
+                await websocket.send_json({
+                    "type": "idle_timeout",
+                    "idle_seconds": int(max(audio_idle, dg_idle)),
+                })
+                break
+
     async def handle_transcription_stream(
         self,
         websocket: WebSocket,
@@ -146,6 +183,7 @@ class ScribeStreamService:
             "segment_start": segment_start,
             "batch_start_ts": None,
             "ws_closed": False,
+            "last_audio_at": datetime.now(timezone.utc),
             "last_deepgram_at": datetime.now(timezone.utc),
             "notified_idle": False,
         }
@@ -154,29 +192,23 @@ class ScribeStreamService:
             on_flush=lambda text: self._on_flush(ctx, websocket, session_id, text),
             on_intermediate=lambda text: self._on_intermediate(ctx, websocket, text),
         ) as dg_session:
+            idle_task = asyncio.create_task(
+                self._run_idle_checker(ctx, websocket, session_id)
+            )
             try:
-                while True:
-                    data = await websocket.receive_bytes()
-                    await asyncio.to_thread(dg_session.send_audio, data)
-
-                    now = datetime.now(timezone.utc)
-                    idle = (now - ctx["last_deepgram_at"]).total_seconds()
-                    if idle >= settings.SCRIBE_IDLE_TIMEOUT_SECONDS and not ctx["notified_idle"]:
-                        ctx["notified_idle"] = True
-                        logger.info(
-                            f"Session {session_id} idle for {idle:.0f}s — flushing and closing"
-                        )
-                        await websocket.send_json({
-                            "type": "idle_timeout",
-                            "idle_seconds": int(idle),
-                        })
-                        break
+                await self._run_audio_loop(ctx, websocket, dg_session)
             except WebSocketDisconnect:
                 ctx["ws_closed"] = True
                 logger.info(f"Client disconnected from session {session_id}")
             except Exception as e:
                 logger.error(f"Transcription error for session {session_id}: {e}", exc_info=True)
                 raise
+            finally:
+                idle_task.cancel()
+                try:
+                    await idle_task
+                except asyncio.CancelledError:
+                    pass
 
         await dg_session.flush_remaining()
         elapsed, is_first_stop = await self.prepare_stop(session_id, user_id)

@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import inspect as sa_inspect
 
 from src.infrastructure.persistence.postgres.models import Session
+from src.schemas.api.chat import ChatSummary
 from src.schemas.api.reports import ReportMetadata
 from src.utils.formatters import calculate_age
 
@@ -69,6 +70,7 @@ class SessionResponse(SessionListItem):
     clinical_summary: Optional[str] = None
     last_summarized_transcript_id: Optional[UUID] = None
     reports: list[ReportMetadata] = []
+    chats: list[ChatSummary] = []
 
     @classmethod
     def from_session(cls, session: Session) -> "SessionResponse":
@@ -88,6 +90,13 @@ class SessionResponse(SessionListItem):
                 )
                 for r in session.reports
             ]
+        if "ai_conversations" not in loaded and session.ai_conversations:
+            sorted_chats = sorted(
+                session.ai_conversations,
+                key=lambda c: c.updated_at or c.created_at,
+                reverse=True,
+            )
+            resp.chats = [ChatSummary.model_validate(c) for c in sorted_chats]
         return resp
 
 

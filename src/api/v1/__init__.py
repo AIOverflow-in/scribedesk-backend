@@ -1,6 +1,8 @@
 from fastapi import APIRouter
 
 from src.api.v1.auth import router as auth_router
+from src.api.v1.chat import router as chat_router
+from src.api.v1.events import router as events_router
 from src.api.v1.patients import router as patients_router
 from src.api.v1.reports import router as reports_router
 from src.api.v1.sessions import router as sessions_router
@@ -10,6 +12,8 @@ from src.api.v1.websockets import router as ws_router
 
 api_router = APIRouter()
 api_router.include_router(auth_router, prefix="/auth", tags=["auth"])
+api_router.include_router(chat_router, prefix="", tags=["chat"])
+api_router.include_router(events_router, prefix="", tags=["events"])
 api_router.include_router(patients_router, prefix="", tags=["patients"])
 api_router.include_router(reports_router, prefix="", tags=["reports"])
 api_router.include_router(sessions_router, prefix="", tags=["sessions"])

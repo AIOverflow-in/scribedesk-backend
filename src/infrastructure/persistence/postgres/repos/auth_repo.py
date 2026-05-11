@@ -81,6 +81,18 @@ class AuthRepository:
         result = await self.session.execute(stmt)
         return result.scalars().all()
 
+    async def get_oauth_provider_names(self, user_id: UUID) -> list[str]:
+        stmt = (
+            select(UserAuthProvider.provider)
+            .where(
+                UserAuthProvider.user_id == user_id,
+                UserAuthProvider.provider != "email",
+            )
+            .distinct()
+        )
+        result = await self.session.execute(stmt)
+        return list(result.scalars().all())
+
     # --- Provider Writes ---
 
     async def create_provider(self, provider: UserAuthProvider) -> UserAuthProvider:

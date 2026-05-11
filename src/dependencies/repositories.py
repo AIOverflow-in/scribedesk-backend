@@ -6,6 +6,7 @@ from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.dependencies.db import get_db_session
+from src.infrastructure.persistence.postgres.repos.ai_conversations_repo import AIConversationsRepository
 from src.infrastructure.persistence.postgres.repos.auth_repo import AuthRepository
 from src.infrastructure.persistence.postgres.repos.patients_repo import PatientsRepository
 from src.infrastructure.persistence.postgres.repos.reports_repo import ReportsRepository
@@ -38,9 +39,14 @@ async def get_reports_repo(session: AsyncSession = Depends(get_db_session)) -> R
     return ReportsRepository(session=session)
 
 
+async def get_ai_conversations_repo(session: AsyncSession = Depends(get_db_session)) -> AIConversationsRepository:
+    return AIConversationsRepository(session=session)
+
+
 AuthRepositoryDep = Annotated[AuthRepository, Depends(get_auth_repo)]
 PatientsRepositoryDep = Annotated[PatientsRepository, Depends(get_patients_repo)]
 SessionsRepositoryDep = Annotated[SessionsRepository, Depends(get_sessions_repo)]
 TemplatesRepositoryDep = Annotated[TemplatesRepository, Depends(get_templates_repo)]
 UserRepositoryDep = Annotated[UserRepository, Depends(get_user_repo)]
 ReportsRepositoryDep = Annotated[ReportsRepository, Depends(get_reports_repo)]
+AIConversationsRepositoryDep = Annotated[AIConversationsRepository, Depends(get_ai_conversations_repo)]

@@ -5,8 +5,9 @@ from typing import Annotated
 from fastapi import Depends
 
 from src.dependencies.ai import FastLLMDep, TinyLLMDep
-from src.dependencies.infra import SessionManagerDep
+from src.dependencies.infra import PubSubManagerDep, SessionManagerDep
 from src.dependencies.repositories import (
+    AIConversationsRepositoryDep,
     AuthRepositoryDep,
     PatientsRepositoryDep,
     ReportsRepositoryDep,
@@ -15,6 +16,7 @@ from src.dependencies.repositories import (
     UserRepositoryDep,
 )
 from src.modules.auth.service import AuthService
+from src.modules.copilot.service import ChatService
 from src.modules.patients.service import PatientService
 from src.modules.reports.service import ReportService
 from src.modules.sessions.service import SessionService
@@ -69,9 +71,24 @@ async def get_report_service(
     )
 
 
+async def get_chat_service(
+    ai_conversations_repo: AIConversationsRepositoryDep,
+    sessions_repo: SessionsRepositoryDep,
+    patients_repo: PatientsRepositoryDep,
+    pubsub_manager: PubSubManagerDep,
+) -> ChatService:
+    return ChatService(
+        ai_conversations_repo=ai_conversations_repo,
+        sessions_repo=sessions_repo,
+        patients_repo=patients_repo,
+        pubsub_manager=pubsub_manager,
+    )
+
+
 AuthServiceDep = Annotated[AuthService, Depends(get_auth_service)]
 PatientServiceDep = Annotated[PatientService, Depends(get_patient_service)]
 SessionServiceDep = Annotated[SessionService, Depends(get_session_service)]
 TemplateServiceDep = Annotated[TemplateService, Depends(get_template_service)]
 UserServiceDep = Annotated[UserService, Depends(get_user_service)]
 ReportServiceDep = Annotated[ReportService, Depends(get_report_service)]
+ChatServiceDep = Annotated[ChatService, Depends(get_chat_service)]

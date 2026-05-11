@@ -37,6 +37,7 @@ class User(TimestampMixin, Base):
     patients: Mapped[list["Patient"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     sessions: Mapped[list["Session"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     templates: Mapped[list["Template"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    ai_conversations: Mapped[list["AIConversation"]] = relationship(back_populates="user", cascade="all, delete-orphan")
 
 
 class UserAuthProvider(Base):
@@ -97,7 +98,7 @@ class Session(TimestampMixin, Base):
     __tablename__ = "sessions"
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
-    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     patient_id: Mapped[Optional[uuid.UUID]] = mapped_column(ForeignKey("patients.id", ondelete="SET NULL"))
     title: Mapped[str] = mapped_column(String(255))
     description: Mapped[Optional[str]] = mapped_column(Text)
@@ -116,6 +117,11 @@ class Session(TimestampMixin, Base):
         foreign_keys="SessionTimeline.session_id",
     )
     reports: Mapped[list["Report"]] = relationship(back_populates="session", cascade="all, delete-orphan", passive_deletes=True)
+    ai_conversations: Mapped[list["AIConversation"]] = relationship(back_populates="session", cascade="all, delete-orphan")
+
+    __table_args__ = (
+        Index("idx_sessions_user_created", "user_id", "created_at"),
+    )
 
 
 class SessionTimeline(Base):
@@ -164,3 +170,45 @@ class Report(TimestampMixin, Base):
 
     session: Mapped["Session"] = relationship(back_populates="reports")
     template: Mapped["Template"] = relationship()
+
+
+# --- AI Chat ---
+
+class AIConversation(TimestampMixin, Base):
+    __tablename__ = "ai_conversations"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    session_id: Mapped[Optional[uuid.UUID]] = mapped_column(ForeignKey("sessions.id", ondelete="SET NULL"))
+    patient_id: Mapped[Optional[uuid.UUID]] = mapped_column(ForeignKey("patients.id", ondelete="SET NULL"))
+
+    title: Mapped[str] = mapped_column(String(255), default="New Chat")
+    is_title_generated: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    user: Mapped["User"] = relationship(back_populates="ai_conversations")
+    session: Mapped[Optional["Session"]] = relationship(back_populates="ai_conversations")
+    messages: Mapped[list["AIMessage"]] = relationship(back_populates="conversation", cascade="all, delete-orphan")
+
+    __table_args__ = (
+        Index("idx_ai_conv_user", "user_id"),
+        Index("idx_ai_conv_session", "session_id"),
+        Index("idx_ai_conv_patient", "patient_id"),
+    )
+
+
+class AIMessage(TimestampMixin, Base):
+    __tablename__ = "ai_messages"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    conversation_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("ai_conversations.id", ondelete="CASCADE"), index=True)
+
+    role: Mapped[str] = mapped_column(String(50))
+    content: Mapped[str] = mapped_column(Text)
+    artifacts: Mapped[Optional[dict]] = mapped_column(JSONB)
+    input_method: Mapped[str] = mapped_column(String(50), default="text")
+
+    conversation: Mapped["AIConversation"] = relationship(back_populates="messages")
+
+    __table_args__ = (
+        Index("idx_ai_msg_conversation", "conversation_id"),
+    )
