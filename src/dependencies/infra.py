@@ -2,7 +2,7 @@
 
 from typing import Annotated
 
-from fastapi import Depends
+from fastapi import Depends, Request
 from redis.asyncio import Redis
 
 from src.dependencies.db import get_redis
@@ -20,9 +20,9 @@ def get_session_manager(
 
 
 def get_pubsub_manager(
-    redis: Redis = Depends(get_redis),
+    request: Request,
 ) -> PubSubManager:
-    return PubSubManager(redis_client=redis)
+    return request.app.state.pubsub_manager
 
 
 def get_deepgram_client() -> DeepgramClient:
